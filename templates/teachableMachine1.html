@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Teachable Machine Live</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+  <style>
+    video, canvas {
+      border: 2px solid black;
+      border-radius: 8px;
+      margin: 10px;
+    }
+    #result {
+      font-size: 20px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h2>Webcam Prediction</h2>
+  <video id="webcam" autoplay playsinline width="224" height="224"></video>
+  <p id="result">Loading model...</p>
+
+  <script>
+    let model, metadata, webcam;
+
+    async function loadModel() {
+      model = await tf.loadLayersModel("/static/models/WatchPhone/model.json");
+      metadata = await fetch("/static/models/WatchPhone/metadata.json").then(r => r.json());
+      document.getElementById("result").innerText = "Model loaded. Starting camera...";
+      startCamera();
+    }
+
+    async function startCamera() {
+      const webcamElement = document.getElementById("webcam");
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      webcamElement.srcObject = stream;
+
+      webcamElement.addEventListener("loadeddata", predictLoop);
+    }
+
+    async function predictLoop() {
+      const webcamElement = document.getElementById("webcam");
+
+      // preprocess frame
+      let tensor = tf.browser.fromPixels(webcamElement)
+        .resizeNearestNeighbor([224, 224])
+        .toFloat()
+        .div(255.0)
+        .expandDims();
+
+      let prediction = model.predict(tensor);
+      prediction = prediction.dataSync();
+
+      let maxIndex = prediction.indexOf(Math.max(...prediction));
+      document.getElementById("result").innerText =
+        `Prediction: ${metadata.labels[maxIndex]} (${prediction[maxIndex].toFixed(2)})`;
+
+      requestAnimationFrame(predictLoop);
+    }
+
+    loadModel();
+  </script>
+</body>
+</html>
