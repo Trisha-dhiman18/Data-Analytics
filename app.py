@@ -16,6 +16,7 @@ def about_me():
 @app.route('/journey')
 def journey():
     return render_template('journey.html')
+    
 
 @app.route("/feedback")
 def feedback():
